@@ -2,7 +2,7 @@ import { configOk } from './lib/supabase.js';
 import { getSession, signIn, signUp, signOut, onAuthChange } from './lib/auth.js';
 import { listKeys, testKey, addKey, toggleKey, deleteKey, maskKey } from './lib/keys.js';
 import { defaultCharacters, loadCharacters, saveCharacter } from './lib/characters.js';
-import { generateSheet, saveSheet } from './lib/generate.js';
+import { generateSheet, saveSheet, DEFAULT_IMAGE_MODEL } from './lib/generate.js';
 import { listSheets, signedImageUrl, deleteSheet } from './lib/gallery.js';
 
 const $ = (id) => document.getElementById(id);
@@ -274,6 +274,10 @@ async function saveCharacters() {
 
 /* ---------------- Tạo ảnh ---------------- */
 
+function getImageModel() {
+  return (localStorage.getItem('cs-image-model') || '').trim() || DEFAULT_IMAGE_MODEL;
+}
+
 function renderGenCards() {
   $('gen-cards').innerHTML = characters
     .map(
@@ -291,6 +295,14 @@ function renderGenCards() {
     btn.addEventListener('click', () => generateOne(Number(btn.dataset.gen)));
   });
   $('btn-gen-both').addEventListener('click', generateBoth);
+
+  // Ô nhập model: nhớ lựa chọn theo trình duyệt
+  const modelInput = $('image-model');
+  modelInput.value = getImageModel();
+  modelInput.placeholder = DEFAULT_IMAGE_MODEL;
+  modelInput.onchange = () => {
+    localStorage.setItem('cs-image-model', modelInput.value.trim());
+  };
 }
 
 function setProgress(text) {
@@ -313,7 +325,8 @@ async function generateOne(slot) {
   setProgress('');
   $('gen-result').hidden = true;
   try {
-    const { blob, prompt, keyLabel } = await generateSheet(char, keys, setProgress);
+    const model = getImageModel();
+    const { blob, prompt, keyLabel } = await generateSheet(char, keys, setProgress, model);
     setProgress('Đang lưu ảnh lên Supabase...');
     const saved = await saveCharacter(char).catch(() => null); // lưu nhân vật nếu chưa lưu
     const row = await saveSheet({
@@ -322,9 +335,10 @@ async function generateOne(slot) {
       prompt,
       blob,
       keyLabel,
+      model,
     });
     const url = URL.createObjectURL(blob);
-    $('gen-result').innerHTML = `<h3>✓ Xong — ${esc(char.name)} <span class="hint">(qua ${esc(keyLabel)})</span></h3>
+    $('gen-result').innerHTML = `<h3>✓ Xong — ${esc(char.name)} <span class="hint">(qua ${esc(keyLabel)}, model ${esc(model)})</span></h3>
       <img src="${url}" alt="sheet" />
       <p class="hint">Đã lưu vào Gallery lúc ${new Date(row.created_at).toLocaleString('vi-VN')}.</p>`;
     $('gen-result').hidden = false;

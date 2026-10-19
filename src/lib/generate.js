@@ -2,8 +2,10 @@ import { supabase } from './supabase.js';
 import { pickUsableKeys, markKeyCooldown } from './keys.js';
 import { buildSheetPrompt } from './prompt.js';
 
-// Model đã verify trong metruyen (Nano Banana 2)
-export const IMAGE_MODEL = 'gemini-3.1-flash-image';
+// Model ảnh mặc định (Nano Banana 2) — đã verify trong metruyen.
+// LƯU Ý: model text như gemini-3.8-flash KHÔNG tạo được ảnh (Google chỉ cho output text).
+export const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-image';
+export const KNOWN_IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image-preview'];
 const TIMEOUT_MS = 120000;
 
 function base64ToBlob(base64, mimeType) {
@@ -13,12 +15,12 @@ function base64ToBlob(base64, mimeType) {
   return new Blob([bytes], { type: mimeType || 'image/png' });
 }
 
-async function callGeminiImage(apiKey, prompt) {
+async function callGeminiImage(apiKey, prompt, model) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey.trim())}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -30,7 +32,7 @@ async function callGeminiImage(apiKey, prompt) {
       }
     );
     if (res.status === 429) {
-      const e = new Error('Hết quota / bị giới hạn (429)');
+      const e = new Error('Hết quota / bị giới hạn (429) — quota tính theo từng key, thử key khác hoặc đợi vài phút');
       e.code = 429;
       throw e;
     }
@@ -47,7 +49,8 @@ async function callGeminiImage(apiKey, prompt) {
 }
 
 // Tạo ảnh 1 nhân vật: tự xoay vòng key khi 429
-export async function generateSheet(character, keys, onProgress) {
+export async function generateSheet(character, keys, onProgress, model) {
+  const useModel = (model || '').trim() || DEFAULT_IMAGE_MODEL;
   const usable = pickUsableKeys(keys);
   if (!usable.length) {
     throw new Error('Không có API key khả dụng — thêm key ở tab "API Keys".');
@@ -56,19 +59,19 @@ export async function generateSheet(character, keys, onProgress) {
   let lastErr = null;
   for (const k of usable) {
     try {
-      onProgress?.(`Đang tạo ảnh "${character.name}" bằng ${k.label}...`);
-      const blob = await callGeminiImage(k.api_key, prompt);
-      return { blob, prompt, keyLabel: k.label };
+      onProgress?.(`Đang tạo ảnh "${character.name}" bằng ${k.label} (model ${useModel})...`);
+      const blob = await callGeminiImage(k.api_key, prompt, useModel);
+      return { blob, prompt, keyLabel: k.label, model: useModel };
     } catch (e) {
       lastErr = e;
       if (e.code === 429) markKeyCooldown(k.id);
     }
   }
-  throw new Error(`Tạo ảnh thất bại ở mọi key: ${lastErr?.message || 'lỗi không rõ'}`);
+  throw new Error(`Tạo ảnh thất bại ở mọi key (model ${useModel}): ${lastErr?.message || 'lỗi không rõ'}`);
 }
 
 // Upload ảnh lên Storage + ghi record vào cs_sheets
-export async function saveSheet({ characterId, characterName, prompt, blob, keyLabel }) {
+export async function saveSheet({ characterId, characterName, prompt, blob, keyLabel, model }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Chưa đăng nhập');
   const path = `${user.id}/${Date.now()}.png`;
@@ -84,7 +87,7 @@ export async function saveSheet({ characterId, characterName, prompt, blob, keyL
       character_name: characterName,
       prompt,
       storage_path: path,
-      model: IMAGE_MODEL,
+      model: model || DEFAULT_IMAGE_MODEL,
     })
     .select()
     .single();

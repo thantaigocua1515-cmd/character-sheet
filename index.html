@@ -61,6 +61,13 @@
 
       <section id="tab-generate" class="tab-panel" hidden>
         <p class="hint">Tạo model sheet cho từng nhân vật bằng Gemini. Ảnh tự lưu lên Supabase.</p>
+        <div class="card">
+          <h3>⚙️ Model tạo ảnh</h3>
+          <label>Model <input id="image-model" placeholder="gemini-3.1-flash-image" /></label>
+          <p class="hint">Mặc định: <code>gemini-3.1-flash-image</code> (Nano Banana 2).
+          Model ảnh khác: <code>gemini-2.5-flash-image-preview</code>.
+          Lưu ý: model text như <code>gemini-3.8-flash</code> không tạo được ảnh (Google chỉ cho output text).</p>
+        </div>
         <div class="gen-grid" id="gen-cards"></div>
         <div id="gen-progress" class="progress" hidden></div>
         <div id="gen-result" class="gen-result" hidden></div>
