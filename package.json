@@ -1,0 +1,1 @@
+{"dependencies":{"@supabase/supabase-js":"^2.45.4"},"devDependencies":{"vite":"^5.4.8"},"name":"character-sheet-studio","private":true,"scripts":{"build":"vite build","dev":"vite","preview":"vite preview"},"type":"module","version":"0.1.0"}

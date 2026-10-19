@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Sheet Studio</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">🎨 Character Sheet Studio</div>
+      <div class="userbox" id="userbox" hidden>
+        <span id="user-email"></span>
+        <button id="btn-logout" class="btn btn-sm">Đăng xuất</button>
+      </div>
+    </header>
+
+    <div id="config-error" class="card error" hidden>
+      <h3>Chưa cấu hình Supabase</h3>
+      <p>Tạo file <code>.env</code> từ <code>.env.example</code> rồi điền
+      <code>VITE_SUPABASE_URL</code> và <code>VITE_SUPABASE_ANON_KEY</code>,
+      sau đó chạy lại dev server. Xem chi tiết trong <code>README.md</code>.</p>
+    </div>
+
+    <!-- Màn hình đăng nhập / đăng ký -->
+    <div id="auth-view" class="auth-wrap" hidden>
+      <div class="card auth-card">
+        <h2 id="auth-title">Đăng nhập</h2>
+        <label>Email <input id="auth-email" type="email" placeholder="you@example.com" /></label>
+        <label>Mật khẩu <input id="auth-password" type="password" placeholder="••••••••" /></label>
+        <div id="auth-error" class="form-error" hidden></div>
+        <button id="btn-auth-submit" class="btn btn-primary btn-block">Đăng nhập</button>
+        <p class="auth-switch">
+          <span id="auth-switch-text">Chưa có tài khoản?</span>
+          <a href="#" id="auth-switch-link">Đăng ký</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- App chính -->
+    <div id="main-view" hidden>
+      <nav class="tabs">
+        <button class="tab active" data-tab="characters">🧍 Nhân vật</button>
+        <button class="tab" data-tab="generate">✨ Tạo ảnh</button>
+        <button class="tab" data-tab="gallery">🖼️ Gallery</button>
+        <button class="tab" data-tab="keys">🔑 API Keys</button>
+        <button class="tab" data-tab="video">🎬 Video</button>
+      </nav>
+
+      <section id="tab-characters" class="tab-panel">
+        <p class="hint">Mô tả 2 nhân vật cơ bản. Nhập 1 lần, lưu lại để dùng cho mọi lần tạo ảnh sau.</p>
+        <div class="char-grid" id="char-forms"></div>
+        <button id="btn-save-chars" class="btn btn-primary">💾 Lưu 2 nhân vật</button>
+        <span id="chars-saved-msg" class="ok-msg" hidden>Đã lưu ✓</span>
+      </section>
+
+      <section id="tab-generate" class="tab-panel" hidden>
+        <p class="hint">Tạo model sheet cho từng nhân vật bằng Gemini. Ảnh tự lưu lên Supabase.</p>
+        <div class="gen-grid" id="gen-cards"></div>
+        <div id="gen-progress" class="progress" hidden></div>
+        <div id="gen-result" class="gen-result" hidden></div>
+      </section>
+
+      <section id="tab-gallery" class="tab-panel" hidden>
+        <div class="gallery-bar">
+          <p class="hint">Ảnh đã tạo của tài khoản này (mới nhất trước).</p>
+          <button id="btn-reload-gallery" class="btn btn-sm">↻ Tải lại</button>
+        </div>
+        <div id="gallery-grid" class="gallery-grid"></div>
+        <p id="gallery-empty" class="hint" hidden>Chưa có ảnh nào. Qua tab "Tạo ảnh" để bắt đầu.</p>
+      </section>
+
+      <section id="tab-keys" class="tab-panel" hidden>
+        <p class="hint">Mỗi tài khoản tự thêm Gemini API key của mình. Key lỗi/quota sẽ tự xoay vòng sang key khác.</p>
+        <div class="card">
+          <h3>Thêm key mới</h3>
+          <div class="row">
+            <label class="grow">Tên gợi nhớ <input id="key-label" placeholder="Key 1" /></label>
+            <label class="grow2">API key <input id="key-value" type="password" placeholder="AIza..." /></label>
+          </div>
+          <div class="row">
+            <button id="btn-test-key" class="btn">🔍 Kiểm tra key</button>
+            <button id="btn-add-key" class="btn btn-primary">➕ Thêm key</button>
+            <span id="key-test-msg" class="hint"></span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Keys của bạn</h3>
+          <div id="keys-list"></div>
+        </div>
+      </section>
+
+      <section id="tab-video" class="tab-panel" hidden>
+        <div class="card">
+          <h3>🎬 Tạo video từ ảnh — sắp có</h3>
+          <p class="hint">Giai đoạn 2: chọn 1 ảnh trong Gallery làm ảnh tham chiếu, nhập motion prompt
+          (vd "squirrel chạy trong rừng"), gọi Veo image-to-video bằng đúng Gemini key của bạn.
+          Bảng <code>cs_videos</code> và bucket <code>cs-videos</code> đã tạo sẵn trong schema.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal xem ảnh lớn -->
+  <div id="img-modal" class="modal" hidden>
+    <div class="modal-bg" id="modal-bg"></div>
+    <img id="modal-img" alt="character sheet" />
+    <button id="modal-close" class="btn modal-close">✕</button>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
