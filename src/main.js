@@ -13,9 +13,30 @@ let keys = [];
 let characters = []; // [{...} + slot], có id khi đã lưu DB
 let authMode = 'signin';
 
+/* ---------------- Theme: sáng / tối ---------------- */
+function initTheme() {
+  const saved = localStorage.getItem('cs-theme');
+  const theme =
+    saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.dataset.theme = theme;
+  updateThemeIcon();
+}
+function updateThemeIcon() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  $('btn-theme').textContent = dark ? '☀️' : '🌙';
+  $('btn-theme').title = dark ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối';
+}
+
 init();
 
 async function init() {
+  initTheme();
+  $('btn-theme').addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('cs-theme', next);
+    updateThemeIcon();
+  });
   if (!configOk) {
     $('config-error').hidden = false;
     return;
@@ -62,25 +83,55 @@ function wireAuth() {
     $('auth-switch-text').textContent = authMode === 'signin' ? 'Chưa có tài khoản?' : 'Đã có tài khoản?';
     $('auth-switch-link').textContent = authMode === 'signin' ? 'Đăng ký' : 'Đăng nhập';
     $('auth-error').hidden = true;
+    $('auth-info').hidden = true;
   });
   $('btn-auth-submit').addEventListener('click', async () => {
     const email = $('auth-email').value.trim();
     const password = $('auth-password').value;
     const errBox = $('auth-error');
+    const infoBox = $('auth-info');
     errBox.hidden = true;
+    infoBox.hidden = true;
     if (!email || !password) {
       errBox.textContent = 'Nhập email và mật khẩu.';
       errBox.hidden = false;
       return;
     }
+    const btn = $('btn-auth-submit');
+    btn.disabled = true;
     try {
-      if (authMode === 'signin') await signIn(email, password);
-      else await signUp(email, password);
+      if (authMode === 'signin') {
+        await signIn(email, password);
+        // onAuthStateChange sẽ tự chuyển sang màn hình chính
+      } else {
+        const { session } = await signUp(email, password);
+        if (session) {
+          // Xác nhận email đang TẮT → có session ngay, onAuthStateChange lo tiếp
+        } else {
+          // Supabase đang BẬT "Confirm email" → chưa có session
+          infoBox.textContent =
+            'Đăng ký thành công! Kiểm tra email để xác nhận tài khoản, rồi đăng nhập. ' +
+            '(Muốn bỏ bước này: Supabase Dashboard → Authentication → Providers → Email → tắt "Confirm email".)';
+          infoBox.hidden = false;
+        }
+      }
     } catch (e) {
-      errBox.textContent = e.message || 'Lỗi đăng nhập';
+      errBox.textContent = friendlyAuthError(e.message);
       errBox.hidden = false;
+    } finally {
+      btn.disabled = false;
     }
   });
+}
+
+function friendlyAuthError(msg = '') {
+  if (/email not confirmed/i.test(msg))
+    return 'Email chưa được xác nhận. Kiểm tra hộp thư của bạn, hoặc tắt "Confirm email" trong Supabase (Authentication → Providers → Email).';
+  if (/invalid login credentials/i.test(msg)) return 'Sai email hoặc mật khẩu.';
+  if (/already registered|already exists|duplicate/i.test(msg))
+    return 'Email này đã được đăng ký — hãy đăng nhập.';
+  if (/password.*(short|weak|6 characters)/i.test(msg)) return 'Mật khẩu phải từ 6 ký tự trở lên.';
+  return msg || 'Đã có lỗi xảy ra.';
 }
 
 /* ---------------- Tabs ---------------- */

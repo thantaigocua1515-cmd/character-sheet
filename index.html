@@ -10,9 +10,12 @@
   <div id="app">
     <header class="topbar">
       <div class="brand">🎨 Character Sheet Studio</div>
-      <div class="userbox" id="userbox" hidden>
-        <span id="user-email"></span>
-        <button id="btn-logout" class="btn btn-sm">Đăng xuất</button>
+      <div class="topbar-right">
+        <button id="btn-theme" class="icon-btn" title="Chế độ sáng / tối">🌙</button>
+        <div class="userbox" id="userbox" hidden>
+          <span id="user-email"></span>
+          <button id="btn-logout" class="btn btn-sm">Đăng xuất</button>
+        </div>
       </div>
     </header>
 
@@ -30,6 +33,7 @@
         <label>Email <input id="auth-email" type="email" placeholder="you@example.com" /></label>
         <label>Mật khẩu <input id="auth-password" type="password" placeholder="••••••••" /></label>
         <div id="auth-error" class="form-error" hidden></div>
+        <div id="auth-info" class="info-msg" hidden></div>
         <button id="btn-auth-submit" class="btn btn-primary btn-block">Đăng nhập</button>
         <p class="auth-switch">
           <span id="auth-switch-text">Chưa có tài khoản?</span>
