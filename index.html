@@ -62,11 +62,28 @@
       <section id="tab-generate" class="tab-panel" hidden>
         <p class="hint">Tạo model sheet cho từng nhân vật bằng Gemini. Ảnh tự lưu lên Supabase.</p>
         <div class="card">
-          <h3>⚙️ Model tạo ảnh</h3>
-          <label>Model <input id="image-model" placeholder="gemini-3.1-flash-image" /></label>
-          <p class="hint">Mặc định: <code>gemini-3.1-flash-image</code> (Nano Banana 2).
-          Model ảnh khác: <code>gemini-2.5-flash-image-preview</code>.
-          Lưu ý: model text như <code>gemini-3.8-flash</code> không tạo được ảnh (Google chỉ cho output text).</p>
+          <h3>⚙️ Cài đặt tạo ảnh</h3>
+          <label>Nhà cung cấp
+            <select id="provider">
+              <option value="gemini">Gemini — cần API key (trả phí theo usage)</option>
+              <option value="pollinations">Pollinations — miễn phí, không cần key</option>
+            </select>
+          </label>
+          <div id="gemini-model-wrap">
+            <label>Model <input id="image-model" placeholder="gemini-3.1-flash-image" /></label>
+            <p class="hint">Mặc định: <code>gemini-3.1-flash-image</code> (Nano Banana 2).
+            Model ảnh khác: <code>gemini-2.5-flash-image-preview</code>.
+            Lưu ý: model text như <code>gemini-3.8-flash</code> không tạo được ảnh (Google chỉ cho output text).</p>
+          </div>
+          <div id="poll-model-wrap" hidden>
+            <label>Model
+              <select id="poll-model">
+                <option value="flux">flux — chất lượng cao</option>
+                <option value="turbo">turbo — nhanh</option>
+              </select>
+            </label>
+            <p class="hint">Miễn phí, không cần key. Độ đồng nhất nhân vật qua các khung hình kém hơn Gemini.</p>
+          </div>
         </div>
         <div class="gen-grid" id="gen-cards"></div>
         <div id="gen-progress" class="progress" hidden></div>

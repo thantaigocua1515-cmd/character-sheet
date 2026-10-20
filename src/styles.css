@@ -107,7 +107,7 @@ body {
 
 /* ---------- Inputs ---------- */
 label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 10px; }
-input[type="text"], input[type="email"], input[type="password"], input:not([type]) {
+input[type="text"], input[type="email"], input[type="password"], input:not([type]), select {
   display: block; width: 100%; margin-top: 5px; padding: 10px 12px;
   border: 1.5px solid var(--line); border-radius: 10px; font-size: 14px; color: var(--ink);
   background: var(--bg-soft); font-weight: 400;

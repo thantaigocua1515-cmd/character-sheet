@@ -68,6 +68,7 @@ async function reloadAll() {
   }
   renderKeys();
   await loadCharacterForms();
+  initGenerateSettings();
   renderGenCards();
   await renderGallery();
 }
@@ -274,8 +275,38 @@ async function saveCharacters() {
 
 /* ---------------- Tạo ảnh ---------------- */
 
+function getProvider() {
+  return localStorage.getItem('cs-provider') === 'pollinations' ? 'pollinations' : 'gemini';
+}
+
 function getImageModel() {
   return (localStorage.getItem('cs-image-model') || '').trim() || DEFAULT_IMAGE_MODEL;
+}
+
+function getPollModel() {
+  return (localStorage.getItem('cs-poll-model') || '').trim() || 'flux';
+}
+
+function initGenerateSettings() {
+  const provSel = $('provider');
+  provSel.value = getProvider();
+  const modelInput = $('image-model');
+  modelInput.value = getImageModel();
+  modelInput.placeholder = DEFAULT_IMAGE_MODEL;
+  const pollSel = $('poll-model');
+  pollSel.value = getPollModel();
+  const syncWraps = () => {
+    const isPoll = provSel.value === 'pollinations';
+    $('gemini-model-wrap').hidden = isPoll;
+    $('poll-model-wrap').hidden = !isPoll;
+  };
+  syncWraps();
+  provSel.onchange = () => {
+    localStorage.setItem('cs-provider', provSel.value);
+    syncWraps();
+  };
+  modelInput.onchange = () => localStorage.setItem('cs-image-model', modelInput.value.trim());
+  pollSel.onchange = () => localStorage.setItem('cs-poll-model', pollSel.value);
 }
 
 function renderGenCards() {
@@ -295,14 +326,6 @@ function renderGenCards() {
     btn.addEventListener('click', () => generateOne(Number(btn.dataset.gen)));
   });
   $('btn-gen-both').addEventListener('click', generateBoth);
-
-  // Ô nhập model: nhớ lựa chọn theo trình duyệt
-  const modelInput = $('image-model');
-  modelInput.value = getImageModel();
-  modelInput.placeholder = DEFAULT_IMAGE_MODEL;
-  modelInput.onchange = () => {
-    localStorage.setItem('cs-image-model', modelInput.value.trim());
-  };
 }
 
 function setProgress(text) {
@@ -325,8 +348,9 @@ async function generateOne(slot) {
   setProgress('');
   $('gen-result').hidden = true;
   try {
-    const model = getImageModel();
-    const { blob, prompt, keyLabel } = await generateSheet(char, keys, setProgress, model);
+    const provider = getProvider();
+    const model = provider === 'pollinations' ? getPollModel() : getImageModel();
+    const { blob, prompt, keyLabel, model: usedModel } = await generateSheet(char, keys, setProgress, model, provider);
     setProgress('Đang lưu ảnh lên Supabase...');
     const saved = await saveCharacter(char).catch(() => null); // lưu nhân vật nếu chưa lưu
     const row = await saveSheet({
@@ -335,10 +359,10 @@ async function generateOne(slot) {
       prompt,
       blob,
       keyLabel,
-      model,
+      model: usedModel,
     });
     const url = URL.createObjectURL(blob);
-    $('gen-result').innerHTML = `<h3>✓ Xong — ${esc(char.name)} <span class="hint">(qua ${esc(keyLabel)}, model ${esc(model)})</span></h3>
+    $('gen-result').innerHTML = `<h3>✓ Xong — ${esc(char.name)} <span class="hint">(qua ${esc(keyLabel)}, model ${esc(usedModel)})</span></h3>
       <img src="${url}" alt="sheet" />
       <p class="hint">Đã lưu vào Gallery lúc ${new Date(row.created_at).toLocaleString('vi-VN')}.</p>`;
     $('gen-result').hidden = false;

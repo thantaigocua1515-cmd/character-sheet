@@ -89,14 +89,41 @@ export async function testImageGeneration(apiKey, model) {
   return blob.size > 0;
 }
 
-// Tạo ảnh 1 nhân vật: tự xoay vòng key khi 429
-export async function generateSheet(character, keys, onProgress, model) {
+// Pollinations.ai — miễn phí, không cần key. Prompt dài nên timeout rộng.
+const POLL_TIMEOUT_MS = 180000;
+async function callPollinationsImage(prompt, model) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), POLL_TIMEOUT_MS);
+  try {
+    const url =
+      `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
+      `?width=1024&height=1024&nologo=true&model=${encodeURIComponent(model || 'flux')}` +
+      `&seed=${Math.floor(Math.random() * 1000000)}`;
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`Pollinations lỗi HTTP ${res.status}`);
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) throw new Error('Pollinations không trả về ảnh');
+    return blob;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Tạo ảnh 1 nhân vật.
+// provider: 'gemini' (cần API key, tự xoay vòng khi 429) | 'pollinations' (miễn phí, không cần key)
+export async function generateSheet(character, keys, onProgress, model, provider) {
+  const prompt = buildSheetPrompt(character);
+  if (provider === 'pollinations') {
+    const pModel = (model || '').trim() || 'flux';
+    onProgress?.(`Đang tạo ảnh "${character.name}" bằng Pollinations (miễn phí, model ${pModel})...`);
+    const blob = await callPollinationsImage(prompt, pModel);
+    return { blob, prompt, keyLabel: 'Pollinations', model: `pollinations/${pModel}` };
+  }
   const useModel = (model || '').trim() || DEFAULT_IMAGE_MODEL;
   const usable = pickUsableKeys(keys);
   if (!usable.length) {
     throw new Error('Không có API key khả dụng — thêm key ở tab "API Keys".');
   }
-  const prompt = buildSheetPrompt(character);
   let lastErr = null;
   for (const k of usable) {
     try {
