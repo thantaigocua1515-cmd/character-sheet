@@ -15,6 +15,32 @@ function base64ToBlob(base64, mimeType) {
   return new Blob([bytes], { type: mimeType || 'image/png' });
 }
 
+async function readGeminiError(res) {
+  let msg = '';
+  let details = null;
+  try {
+    const j = await res.json();
+    msg = j?.error?.message || '';
+    details = j?.error?.details || null;
+  } catch {
+    /* bỏ qua — giữ message rỗng */
+  }
+  return { msg, details };
+}
+
+// Dịch chi tiết quota của Google thành hướng xử lý cụ thể
+function quotaHint(details, msg) {
+  const s = JSON.stringify(details || '') + ' ' + (msg || '');
+  if (/free_tier/i.test(s) || /limit:\s*0/i.test(s)) {
+    return (
+      'Quota model ảnh = 0: project của key này chưa bật thanh toán (billing) — ' +
+      'model ảnh Gemini không có free tier. Vào Google AI Studio, chọn đúng project của key ' +
+      'rồi bật Billing (mỗi ảnh ~$0.04). Thêm key mới trong cùng project cũng không hết lỗi này.'
+    );
+  }
+  return 'Quota tính theo project (không phải theo key). Đợi vài phút rồi thử lại, hoặc xem hạn mức ở AI Studio → Rate limits.';
+}
+
 async function callGeminiImage(apiKey, prompt, model) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -32,11 +58,15 @@ async function callGeminiImage(apiKey, prompt, model) {
       }
     );
     if (res.status === 429) {
-      const e = new Error('Hết quota / bị giới hạn (429) — quota tính theo từng key, thử key khác hoặc đợi vài phút');
+      const { msg, details } = await readGeminiError(res);
+      const e = new Error(`Hết quota (429). ${quotaHint(details, msg)}${msg ? ` Chi tiết từ Google: ${msg}` : ''}`);
       e.code = 429;
       throw e;
     }
-    if (!res.ok) throw new Error(`Gemini lỗi HTTP ${res.status}`);
+    if (!res.ok) {
+      const { msg } = await readGeminiError(res);
+      throw new Error(`Gemini lỗi HTTP ${res.status}${msg ? ': ' + msg : ''}`);
+    }
     const json = await res.json();
     if (json.error) throw new Error(json.error.message || 'Gemini báo lỗi');
     const parts = json.candidates?.[0]?.content?.parts || [];
@@ -46,6 +76,17 @@ async function callGeminiImage(apiKey, prompt, model) {
   } finally {
     clearTimeout(t);
   }
+}
+
+// Test nhanh 1 key có tạo được ảnh không (prompt tối thiểu) — dùng ở tab API Keys
+export async function testImageGeneration(apiKey, model) {
+  const useModel = (model || '').trim() || DEFAULT_IMAGE_MODEL;
+  const blob = await callGeminiImage(
+    apiKey,
+    'A simple red circle on a plain white background, flat icon style.',
+    useModel
+  );
+  return blob.size > 0;
 }
 
 // Tạo ảnh 1 nhân vật: tự xoay vòng key khi 429

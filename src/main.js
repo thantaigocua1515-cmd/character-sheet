@@ -2,7 +2,7 @@ import { configOk } from './lib/supabase.js';
 import { getSession, signIn, signUp, signOut, onAuthChange } from './lib/auth.js';
 import { listKeys, testKey, addKey, toggleKey, deleteKey, maskKey } from './lib/keys.js';
 import { defaultCharacters, loadCharacters, saveCharacter } from './lib/characters.js';
-import { generateSheet, saveSheet, DEFAULT_IMAGE_MODEL } from './lib/generate.js';
+import { generateSheet, saveSheet, testImageGeneration, DEFAULT_IMAGE_MODEL } from './lib/generate.js';
 import { listSheets, signedImageUrl, deleteSheet } from './lib/gallery.js';
 
 const $ = (id) => document.getElementById(id);
@@ -473,6 +473,26 @@ $('btn-test-key').addEventListener('click', async () => {
   msg.textContent = 'Đang kiểm tra...';
   const ok = await testKey(v);
   msg.textContent = ok ? '✓ Key hợp lệ' : '✕ Key không hợp lệ hoặc lỗi mạng';
+});
+
+$('btn-test-image').addEventListener('click', async () => {
+  const msg = $('key-test-msg');
+  const v = $('key-value').value.trim();
+  if (!v) {
+    msg.textContent = 'Nhập key trước.';
+    return;
+  }
+  const btn = $('btn-test-image');
+  btn.disabled = true;
+  msg.textContent = `Đang test tạo ảnh bằng model ${getImageModel()}...`;
+  try {
+    await testImageGeneration(v, getImageModel());
+    msg.textContent = '✓ Key tạo được ảnh — quota OK, dùng được.';
+  } catch (e) {
+    msg.textContent = '✕ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 $('btn-add-key').addEventListener('click', async () => {
